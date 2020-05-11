@@ -33,6 +33,13 @@
 
 <img src="images/搜索引擎架构图.png" style="zoom: 67%;" />
 
+存储数据的处理方式：
+
+如：一篇文章 ->   语义分析 ->   关键字提取 ->   根据关键字及出现次数等 ->  倒排存储
+
+关键字搜索：
+
+【查询分析】  关键字相关的近义词、反义词、关联信息（ip、地址、用户信息）
 
 
 （二）爬虫分类
@@ -47,6 +54,10 @@
 
 <img src="images/通用爬虫框架图.png" style="zoom: 67%;" />
 
+网站的首页作为种子， 爬虫去采集能够分解出多少不重复的子链接，及其数据。
+
+采集/下载页面 ->  分解为数据本身（存储） 、新的链接（依次向下爬取，类似树的深度遍历）->  直到没有新链接代表采集完成 （链接使用队列来存储）  
+
 
 
 （三）爬虫数据的分析
@@ -57,8 +68,7 @@
 1） 腾讯新闻出品
  https://news.qq.com/zt2020/page/feiyan.htm#/?nojump=1 
 
-2）丁香医生出品
- https://ncov.dxy.cn/ncovh5/view/pneumonia?scene=2&clicktime=1579579384&enterid=1579579384&from=singlemessage&isappinstalled=0 
+
 
 工具的打开方式：F12 / Ctrl + Shift + I / 更多工具 - 开发者工具 /  右键 - 检查
 
@@ -82,6 +92,19 @@ https://view.inews.qq.com/g2/getOnsInfo?name=disease_h5
 
 
 
+2）丁香医生出品
+ https://ncov.dxy.cn/ncovh5/view/pneumonia?scene=2&clicktime=1579579384&enterid=1579579384&from=singlemessage&isappinstalled=0 
+
+分析的方式同上
+
+分析后的请求地址：
+
+https://ncov.dxy.cn/ncovh5/view/pneumonia?scene=2&from=singlemessage&isappinstalled=0
+
+返回数据的格式是html
+
+
+
 2、postman（模拟http请求的工具）
 
 验证分析出来的请求地址，在排除上下文环境后，是否依然能够拿到数据。
@@ -89,6 +112,14 @@ https://view.inews.qq.com/g2/getOnsInfo?name=disease_h5
 比如有的请求，依赖cookie、依赖动态的参数等等
 
 ![image-20200507205115519](images/image-20200507205115519.png)
+
+3、爬虫破解问题
+
+拿到数据是核心的一步。
+
+公开数据只要是非恶意就允许采集的，非恶意是指模仿人的行为采集的行为，不会高并发或者恶意攻击。
+
+隐私数据都是有强大的加密处理的，防爬虫的手段是安全领域内的一大问题。
 
 
 
@@ -170,7 +201,7 @@ public class DataBean {
 
 3）解析文本数据
 
-```
+```java
 public class DataHandler {
 
     public static void main(String[] args) throws Exception{
@@ -234,33 +265,140 @@ public class DataHandler {
 
 ```
 
+##### 
+
+
+
+## Day 3
+
 ##### (三)  将数据展示在页面中
 
+1、编写service和controller
+
+```
+import com.duing.bean.DataBean;
+
+import java.util.List;
+
+public interface DataService {
+
+    List<DataBean> list();
+}
+
+```
 
 
 
+```
+import com.duing.bean.DataBean;
+import com.duing.handler.DataHandler;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class DataServiceImpl implements DataService {
+
+    @Override
+    public List<DataBean> list() {
+        List<DataBean> result = null;
+
+        try {
+            result = DataHandler.getData();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+}
+
+```
 
 
 
+```
+import com.duing.bean.DataBean;
+import com.duing.service.DataService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+
+import java.util.List;
+
+@Controller
+public class DataController {
+
+    @Autowired
+    private DataService dataService;
+
+    @GetMapping("/")
+    public String list(Model model){
+        List<DataBean> list = dataService.list();
+        model.addAttribute("dataList",list);
+        return "list";
+    }
+    
+}
+
+```
 
 
 
+2、编写页面（注意已引入thymeleaf的maven依赖）
+
+```
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+
+<h2>国内疫情情况如下</h2>
+<br>
+
+<table>
+    <thead>
+    <tr>
+        <th>地区</th>
+        <th>现有确诊</th>
+        <th>累计确诊</th>
+        <th>治愈</th>
+        <th>死亡</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="data:${dataList}">
+        <td th:text="${data.area}">name</td>
+        <td th:text="${data.nowConfirm}">nowConfirm</td>
+        <td th:text="${data.confirm}">confirm</td>
+        <td th:text="${data.heal}">heal</td>
+        <td th:text="${data.dead}">dead</td>
+    </tr>
+    </tbody>
+</table>
+
+</body>
+</html>
+```
 
 
 
+##### (四) 转为实时数据
 
+涉及知识点：用java代码模拟http请求
 
+1、复习get和post请求
 
+​     分别在使用场景、参数传递方式、数据大小限制、安全性等方面的异同
 
+2、HttpURLConnection
 
+​     
 
+##### (五) 使用Jsoup解析html格式数据
 
-
-
-
-
-
-
-
-
-
+##### (六) 增加数据存储逻辑
