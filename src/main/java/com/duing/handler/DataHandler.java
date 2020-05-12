@@ -1,22 +1,53 @@
 package com.duing.handler;
 
 import com.duing.bean.DataBean;
+import com.duing.service.DataService;
 import com.duing.util.HttpURLConnectionUtil;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@Component
 public class DataHandler {
+
+    @Autowired
+    private DataService dataService;
 
     public static String urlStr = "https://view.inews.qq.com/g2/getOnsInfo?name=disease_h5";
 
     public static void main(String[] args) throws Exception {
         getData();
+    }
+
+
+    @PostConstruct
+    public void saveData() {
+        try {
+            List<DataBean> dataBeans = getData();
+            // 先将数据清空  然后存储数据
+            dataService.remove(null);
+            dataService.saveBatch(dataBeans);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    // 配置定时执行的注解  支持cron表达式
+    @Scheduled(cron = "0 0/1 * * * ?")
+    public void updateData() {
+        System.out.println("更新数据");
+        saveData();
     }
 
 
@@ -51,7 +82,7 @@ public class DataHandler {
 
         // 此时增加了一层处理  而且data对应的数据格式是string
         String subStr = (String) map.get("data");
-        Map subMap = gson.fromJson(subStr,Map.class);
+        Map subMap = gson.fromJson(subStr, Map.class);
 
 //        System.out.println(map);
 

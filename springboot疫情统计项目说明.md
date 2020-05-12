@@ -397,8 +397,279 @@ public class DataController {
 
 2、HttpURLConnection
 
-​     
+```
+连接时间和读取时间
+ 连接时间： 发送请求端 连接到  url目标地址端的时间
+           受到距离长短和网络速度的影响
+ 读取时间： 指连接成功后  获取数据的时间
+           受到数据量和服务器处理速度的影响
+```
+
+1） 通过创建url打开远程链接 (HttpURLConnection)
+2)    设置相关参数（超时时间和请求头等等）
+3） 发送请求
+4） 接收结果（使用InputStream和BufferedReader）
+
+```
+public static String doGet(String urlStr) {
+        HttpURLConnection conn = null;
+        InputStream is = null;
+        BufferedReader br = null;
+        StringBuilder result = new StringBuilder();
+
+        try {
+            URL url = new URL(urlStr);
+            // 通过url打开一个远程连接  强转类型
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+
+            // 连接时间和读取时间
+            //  连接时间： 发送请求端 连接到  url目标地址端的时间
+            //            受到距离长短和网络速度的影响
+            //  读取时间： 指连接成功后  获取数据的时间
+            //            受到数据量和服务器处理速度的影响
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(60000);
+
+            // 设定请求头参数的方式：如指定接收json数据   服务端的key值为content-type
+//            conn.setRequestProperty("Accept", "application/json");
+
+            // 发送请求
+            conn.connect();
+
+            if (conn.getResponseCode() != 200) {
+                // TODO 此处应该增加异常处理
+                return "error code";
+            }
+
+            is = conn.getInputStream();
+            br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+            String line;
+            // 逐行读取  不为空就继续
+            while ((line = br.readLine()) != null) {
+                result.append(line);
+                System.out.print(line);
+            }
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (br != null) br.close();
+                if (is != null) is.close();
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        return result.toString();
+    }  
+```
+
+
+
+## Day 4
 
 ##### (五) 使用Jsoup解析html格式数据
 
+1、Jsoup
+      是html的解析器，可以解析html文本和直接解析URL地址。
+      本质上是通过DOM、CSS以及类似jQuery的方法来取出和操作数据。
+
+```
+
+        Document document = Jsoup.parse(htmlStr);
+        System.out.println(document);
+
+        //通过标签名找到元素
+        Elements elements = document.getElementsByTag("p");
+        System.out.println(elements);
+
+        document.getElementsById    //通过id找到元素
+        Element element = document.select("a[href]");  
+        //还支持使用正则表达式查找元素
+
+```
+
+
+
+2、提供不同数据源的切换查询
+
+1）增加了controller方法
+
+```
+    @GetMapping("/list/{id}")
+    public String listById(Model model, @PathVariable String id) {
+        List<DataBean> list = dataService.listById(Integer.parseInt(id));
+        model.addAttribute("dataList", list);
+        return "list";
+    }
+```
+
+@PathVariavle  将接收到的地址数据，映射到方法的参数中
+
+2）完善service
+
+```
+    @Override
+    public List<DataBean> listById(int id) {
+        if (id == 2) {
+            return JsoupHandler.getData();
+        }
+        return list();
+    }
+```
+
+3)  处理数据的方法
+
+```
+public static String urlStr = "https://ncov.dxy.cn/ncovh5/view/pneumonia?" +
+            "scene=2&from=singlemessage&isappinstalled=0";
+
+    public static ArrayList<DataBean> getData() {
+
+        ArrayList<DataBean> result = new ArrayList<>();
+        try {
+            Document doc = Jsoup.connect(urlStr).get();
+//            Elements scripts = doc.select("script");
+            // 找到指定的标签数据
+            Element oneScript = doc.getElementById("getAreaStat");
+
+            String data = oneScript.data();
+            // 字符串截取出json格式的数据
+            String subData = data.substring(data.indexOf("["),
+                    data.lastIndexOf("]") + 1);
+
+//            System.out.println(subData);
+
+            Gson gson = new Gson();
+            ArrayList list = gson.fromJson(subData, ArrayList.class);
+
+            for (int i = 0; i < list.size(); i++) {
+                Map map = (Map) list.get(i);
+                String name = (String) map.get("provinceName");
+                double nowConfirm = (Double) map.get("currentConfirmedCount");
+                double confirm = (Double) map.get("confirmedCount");
+                double heal = (Double) map.get("curedCount");
+                double dead = (Double) map.get("deadCount");
+
+                DataBean dataBean = new DataBean(name, (int) nowConfirm, (int) confirm
+                        , (int) heal, (int) dead);
+                result.add(dataBean);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+```
+
+
+
+4) 验证
+
+分别访问 http://localhost:8080/list/1  和  http://localhost:8080/list/2
+通过省份的名称来区分不同渠道的数据结果
+
+
+
 ##### (六) 增加数据存储逻辑
+
+1、引入相关的依赖
+
+```
+        <dependency>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+            <version>2.1.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-boot-starter</artifactId>
+            <version>3.2.0</version>
+        </dependency>
+```
+
+2、配置数据库
+
+```
+spring.datasource.url=jdbc:mysql://localhost:3306/epidemic?serverTimezone=UTC&useUnicode=true&characterEncoding=utf8
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.username=root
+spring.datasource.password=123456
+```
+
+3、使用mybatis-plus进行增删改查的操作
+
+
+
+4、初始化数据存储的逻辑
+
+@PostConstruct
+修饰的方法，在服务器加载Servlet时运行，而且只执行一次
+
+
+
+@Scheduled
+
+1） @Scheduled(fixedRate = 10000)   指定频率的执行任务   从方法执行开始就计时
+        假设方法执行5s    那么第一次执行开始过了10s后，开始第二次执行
+
+2） @Scheduled(fixedDelay = 10000)   指定间隔的执行任务    从方法执行完成开始计时
+        假设方法执行5s    那么第一次执行完成过了10s后，开始第二次执行
+
+3） cron表达式
+        把六个位置用空格分隔，指代不同单位的时间，执行的规律
+        秒、分钟、小时、日期、月份、星期、(年，可选)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
