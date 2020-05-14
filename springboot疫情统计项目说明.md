@@ -755,9 +755,7 @@ public class DataBean implements Serializable {
 
 ## Day 5
 
-#### 【展示数据】
-
-##### （一）Echarts
+#### 【展示数据Echarts】
 
 是由百度前端技术部开发，基于js的数据可视化图表库。
 
@@ -768,6 +766,12 @@ https://echarts.apache.org/examples/zh/index.html#chart-type-line
 ![image-20200513210940001](images/image-20200513210940001.png)
 
 分析图形展示的数据来源，然后请求数据后转化成我们需要的格式，传递给页面，通过Echarts渲染出来。
+
+
+
+##### （一）折线图
+
+<img src="images/image-20200514203859830.png" alt="image-20200514203859830" style="zoom: 67%;" />
 
 1）分析的请求地址
 
@@ -788,9 +792,248 @@ HttpClient使用，应用最广泛的处理http请求的工具。
 </dependency>
 ```
 
+
+
+```
+public static String doGet(String urlStr) {
+
+        // 提供了 闭合的httpclient对象
+        CloseableHttpClient httpClient = null;
+        // 也提供了  闭合的响应对象
+        CloseableHttpResponse response = null;
+
+        String result = null;
+
+        try {
+            // 使用默认创建方式
+            httpClient = HttpClients.createDefault();
+            // 创建一个get请求  传入url
+            HttpGet httpGet = new HttpGet(urlStr);
+            // 设置请求头的方式
+            httpGet.addHeader("Accept", "application/json");
+
+            // 设置请求参数  连接时间、数据读取时间(socketTimeOut)等  单位是ms
+            //   ConnectionRequestTimeout  指从共享连接池中取出连接的超时时间
+            RequestConfig requestConfig = RequestConfig.custom()
+                    .setConnectTimeout(35000)
+                    .setConnectionRequestTimeout(35000)
+                    .setSocketTimeout(60000)
+                    .build();
+
+            // 设置配置参数
+            httpGet.setConfig(requestConfig);
+            // 执行请求
+            response = httpClient.execute(httpGet);
+            // 从返回对象中获取返回数据
+            HttpEntity entity = response.getEntity();
+
+            result = EntityUtils.toString(entity);
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+```
+
+
+
 3)  解析出数据
 
+```
+import com.duing.bean.GraphBean;
+import com.duing.util.HttpClientUtil;
+import com.google.gson.Gson;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+public class GraphHandler {
+
+    public static String urlStr = "https://view.inews.qq.com/g2/getOnsInfo?name=disease_other";
+
+    public static List<GraphBean> getGraphData() {
+        List<GraphBean> result = new ArrayList<>();
+
+        String str = HttpClientUtil.doGet(urlStr);
+
+        Gson gson = new Gson();
+        Map map = gson.fromJson(str, Map.class);
+
+        String subStr = (String) map.get("data");
+        Map subMap = gson.fromJson(subStr, Map.class);
+
+        ArrayList list = (ArrayList) subMap.get("chinaDayList");
+
+        for (int i = 0; i < list.size(); i++) {
+            Map tmp = (Map)list.get(i);
+
+            String date = (String)tmp.get("date");
+            double nowConfirm = (Double)tmp.get("nowConfirm");
+            GraphBean graphBean = new GraphBean(date,(int)nowConfirm);
+            result.add(graphBean);
+        }
+
+        return result;
+    }
+
+}
+```
+
+
+
+数据结构
+
+```
+@Data
+@AllArgsConstructor
+public class GraphBean {
+
+    private String date;
+    private int nowConfirm;
+}
+
+```
+
+
+
 4）返回给页面渲染
+
+```
+    @GetMapping("/graph")
+    public String graph(Model model) {
+        List<GraphBean> list = GraphHandler.getGraphData();
+        //  进一步改造数据格式
+        //  因为前端需要的数据是  x轴所有数据的数组和y轴所有数据的数组
+
+        ArrayList<String> dateList = new ArrayList<>();
+        ArrayList<Integer> nowConfirmList = new ArrayList<>();
+
+        for (int i = 0; i < list.size(); i++) {
+            GraphBean graphBean = list.get(i);
+            dateList.add(graphBean.getDate());
+            nowConfirmList.add(graphBean.getNowConfirm());
+        }
+
+        model.addAttribute("dateList", new Gson().toJson(dateList));
+        model.addAttribute("nowConfirmList", new Gson().toJson(nowConfirmList));
+        return "graph";
+    }
+```
+
+
+
+```
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script type="text/javascript" src="echarts/echarts.min.js"></script>
+</head>
+<body>
+
+
+<!-- 为 ECharts 准备一个具备大小（宽高）的 DOM -->
+<div id="main" style="width: 600px;height:400px;"></div>
+
+<!--在js中接收服务端返回数据-->
+<script th:inline="javascript">
+    // 基于准备好的dom，初始化echarts实例
+    var myChart = echarts.init(document.getElementById('main'));
+
+    var dateStr = [[${dateList}]];
+    var nowConfirmStr = [[${nowConfirmList}]];
+
+    // 指定图表的配置项和数据
+    var option = {
+        title: {  // 标题组件
+            text: '全国现有确诊趋势'
+        },
+        tooltip: {  // 提示框组件
+            trigger: 'axis'
+        },
+        legend: {  // 曲线含义说明
+            data: ['现有确诊']
+        },
+        xAxis: {
+            // 转化为json对象
+            data: JSON.parse(dateStr)
+        },
+        yAxis: {
+            type: 'value'
+        },
+        series: [{
+            name: '现有确诊',
+            data: JSON.parse(nowConfirmStr),
+            type: 'line'
+        }]
+    };
+
+    // 使用刚指定的配置项和数据显示图表。
+    myChart.setOption(option);
+</script>
+
+</body>
+</html>
+```
+
+
+
+Echars教程地址： [教程地址](https://echarts.apache.org/zh/tutorial.html#5 分钟上手 ECharts)
+
+准备dom ->  通过js渲染数据 ->  使用[[${ sth }]] 接收服务端数据  
+->  使用JSON.parse()解析json字符串  ->  获得渲染结果
+
+
+
+##### （二）折线图2
+
+
+
+<img src="images/image-20200514211149244.png" alt="image-20200514211149244" style="zoom:67%;" />
+
+相关逻辑在 GraphAddBean对应的代码中
+
+
+
+##### （三）柱状图
+
+<img src="images/image-20200514211249572.png" alt="image-20200514211249572" style="zoom:67%;" />
+
+先分析数据的来源 ->   经过对数据的处理和计算  ->  发送给前端组件进行渲染
+
+
+
+##### （四）饼状图
+
+<img src="images/image-20200514214516013.png" alt="image-20200514214516013" style="zoom:67%;" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
