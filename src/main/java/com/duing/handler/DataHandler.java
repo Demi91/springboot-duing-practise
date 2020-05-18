@@ -42,6 +42,10 @@ public class DataHandler {
 //    @Scheduled(cron = "0 0/1 * * * ?")
     public void updateData() {
         System.out.println("更新数据");
+
+        // TODO 增加监听  提供用户订阅功能的   比如关注黑龙江省份 新增人数的变化
+
+        //  邮件   登录  spring-security（AOP）  复杂的springboot项目分析
         saveData();
     }
 
