@@ -29,7 +29,7 @@ public class DataHandler {
     }
 
 
-//    @PostConstruct
+    @PostConstruct
     public void saveData() {
         try {
             List<DataBean> dataBeans = getData();

@@ -16,10 +16,16 @@ public class GraphHandler {
 
     public static String urlStr = "https://view.inews.qq.com/g2/getOnsInfo?name=disease_other";
 
-    public static List<GraphBean> getGraphData() {
-        List<GraphBean> result = new ArrayList<>();
+    public static String getData(){
+        return HttpClientUtil.doGet(urlStr);
+    }
 
-        String str = HttpClientUtil.doGet(urlStr);
+    public static List<GraphBean> getGraphData() {
+        return getGraphData(getData());
+    }
+
+    public static List<GraphBean> getGraphData(String str) {
+        List<GraphBean> result = new ArrayList<>();
 
         Gson gson = new Gson();
         Map map = gson.fromJson(str, Map.class);
@@ -43,10 +49,13 @@ public class GraphHandler {
 
 
     public static List<GraphAddBean> getGraphAddData() {
+        return getGraphAddData(getData());
+    }
+
+    public static List<GraphAddBean> getGraphAddData(String str) {
 
         List<GraphAddBean> result = new ArrayList<>();
 
-        String str = HttpClientUtil.doGet(urlStr);
         Gson gson = new Gson();
         Map map = gson.fromJson(str, Map.class);
 
@@ -113,12 +122,14 @@ public class GraphHandler {
 
     }
 
-
     public static List<GraphPieBean> getGraphPieData() {
+        return getGraphPieData(getData());
+    }
+
+    public static List<GraphPieBean> getGraphPieData(String str) {
 
         List<GraphPieBean> result = new ArrayList<>();
 
-        String str = HttpClientUtil.doGet(urlStr);
         Gson gson = new Gson();
         Map map = gson.fromJson(str, Map.class);
 
