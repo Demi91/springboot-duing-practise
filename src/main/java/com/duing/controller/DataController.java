@@ -165,6 +165,7 @@ public class DataController {
     @GetMapping("/graphPie")
     public String graphPie(Model model) {
         List<GraphPieBean> list = GraphHandler.getGraphPieData();
+        Collections.sort(list);
         model.addAttribute("list", new Gson().toJson(list));
         return "graphPie";
     }

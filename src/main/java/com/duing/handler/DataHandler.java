@@ -29,7 +29,7 @@ public class DataHandler {
     }
 
 
-    @PostConstruct
+//    @PostConstruct
     public void saveData() {
         List<DataBean> dataBeans = getData();
         // 先将数据清空  然后存储数据
