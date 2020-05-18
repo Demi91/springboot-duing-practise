@@ -10,19 +10,12 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
-public class DataServiceImpl extends ServiceImpl<DataMapper,DataBean>
+public class DataServiceImpl extends ServiceImpl<DataMapper, DataBean>
         implements DataService {
 
 //    @Override
 //    public List<DataBean> list() {
-//        List<DataBean> result = null;
-//
-//        try {
-//            result = DataHandler.getData();
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//        return result;
+//        return DataHandler.getData();
 //    }
 //
 //

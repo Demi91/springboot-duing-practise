@@ -31,15 +31,10 @@ public class DataHandler {
 
     @PostConstruct
     public void saveData() {
-        try {
-            List<DataBean> dataBeans = getData();
-            // 先将数据清空  然后存储数据
-            dataService.remove(null);
-            dataService.saveBatch(dataBeans);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        List<DataBean> dataBeans = getData();
+        // 先将数据清空  然后存储数据
+        dataService.remove(null);
+        dataService.saveBatch(dataBeans);
 
     }
 
@@ -51,7 +46,7 @@ public class DataHandler {
     }
 
 
-    public static List<DataBean> getData() throws Exception {
+    public static List<DataBean> getData() {
 //        Gson gson = new Gson();
 ////        Gson gson1 = new GsonBuilder().create();
 //        Map map = gson.fromJson(testStr,Map.class);
