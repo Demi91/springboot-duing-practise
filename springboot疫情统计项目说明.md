@@ -1442,17 +1442,129 @@ public class MyConfig {
 
 
 
+## Day 8
+
+##### (一) 邮件
 
 
 
+java提供的原生的工具，设定的邮件发送和接收流程
+<img src="images/image-20200519204846056.png" alt="image-20200519204846056" style="zoom: 80%;" />
+
+【协议】
+SMTP =  Simple Mail Transfer Protocol  简单邮件传输协议
+在邮件发送时主要会使用到的协议，服务器地址形如：smtp.***.com
+
+如果从qq邮箱，发送邮件到126邮箱， 使用的前提是，确认qq邮箱中 【设置】 -【账户】 - 【SMTP服务】是开启的状态 -【获取授权码】
 
 
 
+```
+        <dependency>
+            <groupId>javax.mail</groupId>
+            <artifactId>mail</artifactId>
+            <version>1.4.7</version>
+        </dependency>
+```
+
+```
+ // 从qq邮箱  发送邮件  到126邮箱
+    public static void send() throws Exception{
+        // 1) 通过配置构成邮件的会话
+        Properties prop = new Properties();
+        // 配置协议和服务器地址
+        prop.setProperty("mail.transport.protocol","smtp");
+        prop.setProperty("mail.smtp.host","smtp.qq.com");
+        prop.setProperty("mail.smtp.auth","true");
+
+        String port = "465";
+        prop.setProperty("mail.smtp.port",port);
+        prop.setProperty("mail.smtp.socketFactory.class","javax.net.ssl.SSLSocketFactory");
+        prop.setProperty("mail.smtp.socketFactory.fallback","false");
+        prop.setProperty("mail.smtp.socketFactory.port",port);
+
+        // 2) 创建会话
+        Session session = Session.getInstance(prop);
+
+        // 3) 创建一封邮件
+        MimeMessage message = new MimeMessage(session);
+        String sendMail = "2491638831@qq.com";
+        String Recipients = "lanluo_bingzi@126.com";
+        message.setFrom(new InternetAddress(sendMail,"语晴","UTF-8"));
+        // MimeMessage.RecipientType.CC 抄送  MimeMessage.RecipientType.BCC 密送
+        message.setRecipient(MimeMessage.RecipientType.TO ,
+                new InternetAddress(Recipients,"语晴","UTF-8"));
+
+        // 标题 正文  发件时间
+        message.setSubject("来自语晴的问候","UTF-8");
+        message.setContent("不要给我发邮件哦","text/html;charset=UTF-8");
+        message.setSentDate(new Date());
+
+        // 可以保存为 *.eml的文件格式
+        message.saveChanges();
+
+
+        // 4) 获取邮件传输对象  建立连接 并发送
+        Transport transport = session.getTransport();
+        String accout = "2491638831@qq.com";
+        String password = "*************";
+        transport.connect(accout,password);
+        transport.sendMessage(message,message.getAllRecipients());
+
+        transport.close();
+
+    }
+```
 
 
 
+【springboot中整合】
 
+1) 引入依赖
 
+```
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+```
+
+2) 参数配置 application.properties
+
+```
+spring.mail.username=2491638831@qq.com
+spring.mail.password=*********
+spring.mail.host=smtp.qq.com
+spring.mail.properties.mail.smtp.ssl.enable=true
+```
+
+3) 编写逻辑
+
+```
+@Component
+public class MailHandler {
+
+    @Autowired
+    private JavaMailSender mailSender;
+
+    public void send() {
+        System.out.println("执行邮件发送逻辑");
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+
+        mailMessage.setSubject("来自渡一的问候");
+        mailMessage.setText("不要不给阿拓老师发邮件");
+
+        mailMessage.setTo("lanluo_bingzi@126.com");
+        mailMessage.setFrom("2491638831@qq.com");
+
+        mailSender.send(mailMessage);
+    }
+}
+```
+
+4) 改造成模板引擎渲染的html效果
+
+注意： 要更改为自己的邮箱和密码
 
 
 
