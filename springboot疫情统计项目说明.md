@@ -1444,7 +1444,9 @@ public class MyConfig {
 
 ## Day 8
 
-##### (一) 邮件
+#### 【订阅数据】
+
+##### （一）邮件
 
 
 
@@ -1565,6 +1567,155 @@ public class MailHandler {
 4) 改造成模板引擎渲染的html效果
 
 注意： 要更改为自己的邮箱和密码
+
+
+
+## Day 9
+
+##### （二）异步任务
+
+如果部署多台服务器，如何保障邮件只发送一次？
+
+消息中间件 ，可以做到发送一条消息让所有服务器都接收，也可以做到发送一条消息，只交给某一台服务器接收（重要特性）。
+
+为了符合消息中间件的等待时间，需要先返回消息处理的结果，再进行具体的逻辑，此时使用异步任务。
+
+
+
+
+
+
+
+#### 【常用功能】
+
+##### （一） 登录
+
+1） 登录页面编写  login.html
+2)    登录的校验逻辑
+
+```
+@Controller
+public class LoginController {
+
+    // 此时接收的是 localhost:8080/login的get请求地址  跳转到登录页面中
+    @GetMapping("/login")
+    public String login(){
+        return "login";
+    }
+
+    // 接收的是  登录表单中的post请求及其参数  登录后跳转到首页
+    @PostMapping("/login")
+    public String login(@RequestParam("username")String username,
+                        @RequestParam("password")String password,
+                        Map<String,Object> map, HttpSession session){
+        // 只要用户名不为空  且密码符合要求
+        if(!StringUtils.isEmpty(username) && "123456".equals(password)){
+            // 用session存储登录状态
+            session.setAttribute("loginUser",username);
+            // 登录成功  跳转首页
+            return "redirect:/";
+        }
+
+        return "login";
+    }
+}
+
+```
+
+
+
+3) 增加拦截器
+
+```
+@Component
+public class MyInterceptor implements HandlerInterceptor {
+
+    @Override
+    public boolean preHandle(HttpServletRequest request,
+                             HttpServletResponse response,
+                             Object handler) throws Exception {
+        System.out.println("----MyInterceptor---preHandle---");
+
+        Object user = request.getSession().getAttribute("loginUser");
+        // 已登录  放行
+        if (user != null) return true;
+
+        request.getRequestDispatcher("/login").forward(request, response);
+        return false;
+    }
+}
+```
+
+
+
+4) 注册到springmvc中
+
+```
+@Configuration
+public class MyWebMvcConfig implements WebMvcConfigurer {
+
+    @Autowired
+    private MyInterceptor interceptor;
+
+    // 注册自定义拦截器，声明相关拦截规则
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+
+        registry.addInterceptor(interceptor).addPathPatterns("/**")
+                .excludePathPatterns("/login", "/*.css", "/*.js");
+
+    }
+}
+```
+
+可扩展的功能：
+登录的用户名和密码存入数据库中读取
+增加注册功能，可以新增或修改用户账密
+增加邮箱验证码登录的功能
+
+
+
+##### （二） cookie和session
+
+因为web程序所使用的http协议，是无状态的，所以二者的出现是用来解决会话跟踪问题的。
+
+二者区别
+
+1）一个存储在客户端浏览器中，一个存储在服务器中。
+2）cookie不够安全，可以被伪造对服务器进行欺骗
+3）当访问量增多时，session的存储可能带来服务器压力，要考虑减轻
+4）cookie的使用有大小和长度的限制，如大小是在4k左右。
+
+
+
+分布式session
+
+对应于单体应用（一台服务器），如果使用了分布式部署（多台服务器），如何保障用户登录后，如果分发到其他服务器，仍旧能找到登录信息，或者不会再分发到第二台服务器上？
+
+
+
+1） 情况一
+
+<img src="images/image-20200520214342756.png" alt="image-20200520214342756" style="zoom:67%;" />
+
+​      方案1： session复制
+​           任何服务器的session发生变化，就将信息进行序列化，然后广播传输给其他服务器，来保证session同步。
+
+​      方案2：session缓存 （最常用）
+​           将session存储到redis等分布式缓存中，统一所有服务器去存储和读取的位置。
+
+
+
+2） 情况二
+
+<img src="images/image-20200520214412865.png" alt="image-20200520214412865" style="zoom:67%;" />
+
+​    方案3： 粘性session
+​          在nginx中配置，通过对ip地址求hash，使得同一ip地址的请求都分发到固定的服务器中。
+
+
+
+
 
 
 
