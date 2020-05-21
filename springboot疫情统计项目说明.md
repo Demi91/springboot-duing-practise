@@ -1582,7 +1582,10 @@ public class MailHandler {
 
 
 
+使用方式：
 
+1） 先在主程序入口类上，打开相应的开关 @EnableAsync
+2） 在需要异步执行的方法上添加注解  @Async
 
 
 
@@ -1668,6 +1671,8 @@ public class MyWebMvcConfig implements WebMvcConfigurer {
 }
 ```
 
+
+
 可扩展的功能：
 登录的用户名和密码存入数据库中读取
 增加注册功能，可以新增或修改用户账密
@@ -1715,7 +1720,104 @@ public class MyWebMvcConfig implements WebMvcConfigurer {
 
 
 
+##### （三） spring-security
+
+解决的问题是，认证和授权。 类似的框架有Shiro。
+
+认证，是问你是谁？
+授权，是告诉你，你可以做哪些事儿。
+
+用户和权限的通用模型：
+
+![image-20200521205227378](images/image-20200521205227378.png)
+
+可以对应出五张表，来描述用户及角色，和角色所拥有的权限。
 
 
 
+使用流程：
+
+1）引入依赖
+
+```
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+```
+
+2)  创建页面   welcome   + level1/1.html等等
+
+3）编写控制逻辑   
+
+```
+@Controller
+public class WelcomeController {
+
+    @GetMapping("/welcome")
+    public String welcome() {
+        return "welcome";
+    }
+
+    @GetMapping("/level1/{path}")
+    public String level1(@PathVariable("path") String path) {
+        return "level1/" + path;
+    }
+
+
+    @GetMapping("/level2/{path}")
+    public String level2(@PathVariable("path") String path) {
+        return "level2/" + path;
+    }
+
+    @GetMapping("/level3/{path}")
+    public String level3(@PathVariable("path") String path) {
+        return "level3/" + path;
+    }
+}
+```
+
+4)  去掉自己声明的拦截器以及对login的post请求的处理
+
+5）配置用户、角色及权限的方式
+
+```
+@EnableWebSecurity
+public class MySecurityConfig extends WebSecurityConfigurerAdapter {
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+
+        // 设定角色的权限  (角色和资源的对应关系)
+        http.authorizeRequests().antMatchers("/").permitAll()
+                .antMatchers("/level1/**").hasRole("VIP1")
+                .antMatchers("/level2/**").hasRole("VIP2")
+                .antMatchers("/level3/**").hasRole("VIP3");
+
+
+        // 开启自动配置的登录功能
+        http.formLogin().usernameParameter("username").passwordParameter("password")
+                .loginPage("/login");
+//        super.configure(http);
+    }
+
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+
+        // 设定 用户 密码 及角色的关联关系
+        // security要求用户登录时  密码必须加密
+        String pwd = new BCryptPasswordEncoder().encode("123456");
+        auth.inMemoryAuthentication().passwordEncoder(new BCryptPasswordEncoder())
+                .withUser("root").password(pwd).roles("VIP1","VIP2","VIP3")
+                .and()
+                .withUser("guest").password(pwd).roles("VIP1")
+                .and()
+                .withUser("student").password(pwd).roles("VIP1","VIP2");
+
+//        super.configure(auth);
+    }
+}
+
+```
 

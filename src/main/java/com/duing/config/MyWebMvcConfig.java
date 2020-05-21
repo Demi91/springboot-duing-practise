@@ -12,11 +12,11 @@ public class MyWebMvcConfig implements WebMvcConfigurer {
     private MyInterceptor interceptor;
 
     // 注册自定义拦截器，声明相关拦截规则
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-
-        registry.addInterceptor(interceptor).addPathPatterns("/**")
-                .excludePathPatterns("/login", "/*.css", "/*.js");
-
-    }
+//    @Override
+//    public void addInterceptors(InterceptorRegistry registry) {
+//
+//        registry.addInterceptor(interceptor).addPathPatterns("/**")
+//                .excludePathPatterns("/login", "/*.css", "/*.js");
+//
+//    }
 }
